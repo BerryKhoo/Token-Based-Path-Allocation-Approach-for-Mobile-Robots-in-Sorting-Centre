@@ -424,7 +424,7 @@ def collisions(curpos, prevpos):
                 if curpos[i] == prevpos[j] and prevpos[i] == curpos[j]:
                     collision_crash.add((curpos[i], prevpos[i]))
 
-    Report collisions
+    #Report collisions
     if collision_nodes:
         print(f"Collision detected at nodes: {collision_nodes}")
     if collision_crash:
