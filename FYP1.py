@@ -1,17 +1,16 @@
-import sys
 import random
-
-import numpy as np
-import os
-import cv2 as cv
 import networkx as nx
 import matplotlib.pyplot as plt
-from PIL import Image
+from matplotlib import patches
 from matplotlib.animation import FuncAnimation
 from matplotlib.image import imread
-from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 import matplotlib.patches as mpatches
-import time
+import cProfile
+import pstats
+
+# Start the profiler
+profiler = cProfile.Profile()
+profiler.enable()
 
 ## Plotting a Grid Layout for Robots to move
 """Nodes Label
@@ -19,58 +18,136 @@ import time
 """
 fig, ax = plt.subplots()
 grid_layout = [
-[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-[0,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,0],
-[0,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,0],
-[0,2,3,9,9,9,6,6,9,9,9,6,6,9,9,9,6,6,9,9,9,6,6,9,9,9,2,3,0],
-[0,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,0], # 5
-[0,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,0],
-[0,2,3,1,7,7,6,6,7,7,7,6,6,7,7,7,6,6,7,7,7,6,6,7,7,1,2,3,0],
-[0,2,3,7,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,3,7,2,3,0],
-[0,2,3,7,2,3,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,3,7,2,3,0],
-[0,6,6,6,2,3,6,6,8,8,8,6,6,8,8,8,6,6,8,8,8,6,6,2,3,6,6,6,0], # 10
-[0,6,6,6,2,3,6,6,8,8,8,6,6,8,8,8,6,6,8,8,8,6,6,2,3,6,6,6,0],
-[0,2,3,7,2,3,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,2,3,7,2,3,0],
-[0,2,3,7,2,3,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,2,3,7,2,3,0],
-[0,6,6,6,2,3,6,6,8,8,8,6,6,8,8,8,6,6,8,8,8,6,6,2,3,6,6,6,0],
-[0,6,6,6,2,3,6,6,8,8,8,6,6,8,8,8,6,6,8,8,8,6,6,2,3,6,6,6,0], # 15
-[0,2,3,7,2,3,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,2,3,7,2,3,0],
-[0,2,3,7,2,3,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,2,3,7,2,3,0],
-[0,6,6,6,2,3,6,6,8,8,8,6,6,8,8,8,6,6,8,8,8,6,6,2,3,6,6,6,0],
-[0,6,6,6,2,3,6,6,8,8,8,6,6,8,8,8,6,6,8,8,8,6,6,2,3,6,6,6,0],
-[0,2,3,7,2,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,2,3,7,2,3,0], # 20
-[0,2,3,7,2,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,7,2,3,0],
-[0,2,3,1,7,7,6,6,7,7,7,6,6,7,7,7,6,6,7,7,7,6,6,7,7,1,2,3,0],
-[0,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,0],
-[0,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,0],
-[0,2,3,9,9,9,6,6,9,9,9,6,6,9,9,9,6,6,9,9,9,6,6,9,9,9,2,3,0], # 25
-[0,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,4,4,4,6,6,0],
-[0,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,5,5,5,6,6,0],
-[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], # 29
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,0], #Pickup
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,0], #Pickup
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,0], #Pickup
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,0], #Charging
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,0], #Charging
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,5,5,5,5,25,35,0],
+[0,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,4,4,4,4,24,34,0],
+[0,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,8,8,8,8,2,3,0], #Dropoff
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,0], #Charging
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,0], #Charging
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,9,9,9,9,2,3,0], #Charging
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,0], #Pickup
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,0], #Pickup
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,7,2,3,0], #Pickup
+[0,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,5,25,35,0],
+[0,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,4,24,34,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
 ]
 
+print(len(grid_layout[0]))
 class TokenManager:
     def __init__(self, grid_layout):
         self.token_map = {(y, x): True for y, row in enumerate(grid_layout) for x, _ in enumerate(row)}
+        self.reserved_cells = {}  # New dict to track cells reserved by robots
+        self.occupancy_map = {}  # Track occupancy of special cells
 
-    def request_token(self, position):
-        if self.token_map.get(position, False):
-            self.token_map[position] = False
+    def request_token(self, robot_id, position):
+        # Check if the cell is already reserved by another robot
+        if position in self.reserved_cells and self.reserved_cells[position] != robot_id:
+            return False  # The cell is reserved by another robot
+        # Mark the cell as reserved for this robot
+        self.reserved_cells[position] = robot_id
+        # Mark special cells as occupied
+        if position in [tuple(loc) for loc in charging + pickup + dropoff]:
+            self.occupancy_map[position] = robot_id
+        return True
+
+    def release_token(self, robot_id, position):
+        # Release the reservation and token if the robot moves into the reserved cell
+        if position in self.reserved_cells and self.reserved_cells[position] == robot_id:
+            del self.reserved_cells[position]  # Release the reservation
+            self.token_map[position] = True  # Make the token available again
+            if position in self.occupancy_map:
+                self.occupancy_map[position] = None  # Mark special cell as unoccupied
+
+    def pass_token(self, from_robot_id, to_robot_id, position):
+        # Directly pass the token from one robot to another if applicable
+        if position in self.reserved_cells and self.reserved_cells[position] == from_robot_id:
+            self.reserved_cells[position] = to_robot_id
+            if position in self.occupancy_map:
+                self.occupancy_map[position] = to_robot_id
             return True
         return False
 
-    def release_token(self, position):
-        self.token_map[position] = True
+    def has_token(self, position):
+        # Check if the cell is not reserved by any robot
+        return position not in self.reserved_cells
+
+    def cells_without_tokens(self):
+        # List cells that are not reserved
+        return [position for position in self.token_map.keys() if position not in self.reserved_cells]
+
 
 token_manager = TokenManager(grid_layout)
 
 # Draw the graph
-Layout = nx.grid_2d_graph(len(grid_layout), len(grid_layout[0]))
-pos = {(y, x): (x, -y) for x, y in Layout.nodes}  # Positioning nodes
+Layout = nx.grid_2d_graph(len(grid_layout[0]), len(grid_layout))
+pos = {(y, x): (x, -y) for y, x in Layout.nodes}  # Positioning nodes
 
-print(len(grid_layout))
-print(len(grid_layout[0]))
+### SINCE THE GRAPH IS DRAW IN A WAY OF (x, -y), thus at here we are assuming y as row and x as column
+
 # To find the desired position on the graph
 """
 0. Border
@@ -83,6 +160,10 @@ print(len(grid_layout[0]))
 7. Pick Up
 8. Drop Off
 9. Charging
+24. Up Left
+25. Up Right
+34. Down Left
+35. Down Right
 """
 startloc = []
 pickup = []
@@ -91,7 +172,7 @@ charging = []
 def find_loc(grid):
     for row_idx, row in enumerate(grid_layout):
         for col_idx, value in enumerate(row):
-            if value in [2,3,4,5,6]: # Random location on start (On the road)
+            if value in [2,3,4,5,24,25,34,35]: # Random location on start (On the road)
                 # pass
                 # loc = row_idx, col_idx;
                 startloc.append((row_idx, col_idx))
@@ -115,116 +196,55 @@ def find_loc(grid):
 
 find_loc(grid_layout)
 
-#global robotid
-#robotid = {i: startloc[i] for i in range(len(startloc))}
-#print(robotid)
 
-# Define node colors based on the grid_layout
-def layoutbg():
+def draw_static_layout():
+    global fig, ax  # Define these as global if you need to access them outside this function
     fig, ax = plt.subplots()
+
     value_to_color = {
-        0: 'black',
-        1: 'brown',
-        2: 'none',
-        3: 'orange',
-        4: 'yellow',
-        5: 'green',
-        6: 'purple',
-        7: 'grey',
-        8: 'white',
-        9: 'cyan'
+        0: 'black', 1: 'black', 2: 'none', 3: 'none',
+        4: 'none', 5: 'none', 7: 'lime',
+        8: 'teal', 9: 'gold', 24: 'grey', 25: 'grey', 34: 'grey', 35: 'grey'
     }
+    node_colors = [value_to_color[val] for row in grid_layout for val in row]
 
-    # Plotting out the graph
-    for y, row in enumerate(grid_layout):
-        for x, val in enumerate(row):
-            if val in value_to_color:  # Check if the value should be drawn
-                color = value_to_color[val]
-                nx.draw_networkx_nodes(Layout, pos, nodelist=[(y, x)], node_color=color, node_size=40, node_shape='s')
-
-    for y, row in enumerate(grid_layout):
-        for x, val in enumerate(row):
-            if val == 2:
-                center_x, center_y = pos[(y, x)]
-                arrow = mpatches.FancyArrow(center_x, center_y, 0, 0.1, width=0.5, head_width=0.4, head_length=0.4,
-                                            color='green')
-                ax.add_patch(arrow)
-
-    plt.axis('off')
-    plt.grid(False)
-    plt.gca().set_aspect('equal')
-    plt.savefig('background.png', bbox_inches='tight')
-    plt.close(fig)
-
-layoutbg()
-
-background = imread('background.png')
-
-def graph(position):
-
-    node_colors = []
-
-    for y, row in enumerate(grid_layout):
-        for x, val in enumerate(row):
-            if val == 0:
-                node_colors.append('black')
-            elif val == 1:
-                node_colors.append('black')
-            elif val == 2:
-                node_colors.append('none')
-            elif val == 3:
-                node_colors.append('none')
-            elif val == 4:
-                node_colors.append('none')
-            elif val == 5:
-                node_colors.append('none')
-            elif val == 6:
-                node_colors.append('grey')
-            elif val == 7:
-                node_colors.append('lime')
-            elif val == 8:
-                node_colors.append('teal')
-            elif val == 9:
-                node_colors.append('gold')
-
-    # Plotting out the graph
     assert len(node_colors) == len(Layout.nodes)
 
-    ## Layout
-    nx.draw(Layout, pos, node_size=120, node_color=node_colors, node_shape='s', font_size=8, font_color='black')
+    nx.draw(Layout, pos, node_size=10, node_color=node_colors, node_shape='s', font_size=8, font_color='black')
 
-    for i in position:
-        nx.draw_networkx_nodes(Layout, pos, nodelist=[i], node_color='blue', node_size=70, node_shape='o')
-
+    # Drawing arrows or any other static elements
+    arrow_data = {
+        2: ('navy', 0, 0.1), 3: ('turquoise', 0, -0.1),
+        4: ('coral', -0.1, 0), 5: ('violet', 0.1, 0),
+    }
     for y, row in enumerate(grid_layout):
         for x, val in enumerate(row):
-            if val == 2:
+            if val in arrow_data:
+                color, dx, dy = arrow_data[val]
                 center_x, center_y = pos[(y, x)]
-                arrow = mpatches.FancyArrow(center_x, center_y, 0, 0.1, width=0.45, head_width=0.4, head_length=0.4,
-                                            color='navy')
-                ax.add_patch(arrow)
+                ax.add_patch(
+                    mpatches.FancyArrow(center_x, center_y, dx, dy, width=0.45, head_width=0.4, head_length=0.4,
+                                        color=color))
 
-            elif val == 3:
-                center_x, center_y = pos[(y, x)]
-                arrow = mpatches.FancyArrow(center_x, center_y, 0, -0.1, width=0.45, head_width=0.4, head_length=0.4,
-                                            color='turquoise')
-                ax.add_patch(arrow)
+    ax.set_aspect('equal')
+    return fig, ax
 
-            elif val == 4:
-                center_x, center_y = pos[(y, x)]
-                arrow = mpatches.FancyArrow(center_x, center_y, -0.1, 0, width=0.45, head_width=0.4, head_length=0.4,
-                                            color='coral')
-                ax.add_patch(arrow)
+def update_robot_positions(position):
+    ax.clear()
+    # Draw only robot positions as dynamic elements
+    nx.draw_networkx_nodes(Layout, pos, nodelist=position, node_color='blue', node_size=70, node_shape='o')
 
-            elif val == 5:
-                center_x, center_y = pos[(y, x)]
-                arrow = mpatches.FancyArrow(center_x, center_y, 0.1, 0, width=0.45, head_width=0.4, head_length=0.4,
-                                            color='violet')
-                ax.add_patch(arrow)
+    plt.gca().set_aspect('equal')
+    plt.draw()  # Update the plot with the new robot positions
 
 
-    plt.gca().set_aspect('equal')  # Make the plot aspect ratio equal
-    plt.show()
+robot_artists = {}
+def initialize_robots(positions):
+    global robot_artists
+    for robot_id, position in enumerate(positions):
+        # Convert your position to coordinates, e.g., using your 'pos' mapping if using NetworkX
+        x, y = position  # Assuming position is already in the form of coordinates
+        robot_artists[robot_id] = ax.add_patch(patches.Circle((y, -x), 0.5, color='blue'))  # Adjust size and color as needed
 
 
 ## Creating Robots that will be moving on the grid
@@ -236,7 +256,23 @@ def graph(position):
 
 # Function to create a graph from the grid layout
 def robot_movement_graph(grid):
-    # Need to solve path finding only limited on [1-6], last node only can [7-9]
+
+    """
+    0. Border
+    1. Walls
+    2. Only Up
+    3. Only Down
+    4. Only Left
+    5. Only Right
+    6. Intersection (Able to move freely)
+    7. Pick Up
+    8. Drop Off
+    9. Charging
+    24. Up Left
+    25. Up Right
+    34. Down Left
+    35. Down Right
+    """
 
     G = nx.DiGraph()
     rows = len(grid)
@@ -255,25 +291,32 @@ def robot_movement_graph(grid):
                         adj_val = grid[ey][ex]
 
                         # Add edges for destination nodes
-                        if grid[y][x] in [7, 8, 9] and adj_val in [2, 3, 4, 5, 6]:
-                            G.add_edge(node, (ey, ex))
+                        if grid[y][x] in [7, 8, 9] and adj_val in [2, 3, 4, 5, 6, 24, 25, 34, 35]:
+                            G.add_edge(node, (ey, ex), weight=1)
 
 
-            if grid[y][x] in [1, 2, 3, 4, 5, 6]:
+            if grid[y][x] in [1, 2, 3, 4, 5, 24, 25, 34, 35]:
 
                 if grid[y][x] == 2:
-                    G.add_edge(node, (y-1, x)) # UP
+                    G.add_edge(node, (y-1, x), weight=1) # UP
                 elif grid[y][x] == 3:
-                    G.add_edge(node, (y+1, x)) # DOWN
+                    G.add_edge(node, (y+1, x), weight=1) # DOWN
                 elif grid[y][x] == 4:
-                    G.add_edge(node, (y, x-1)) # LEFT
+                    G.add_edge(node, (y, x-1), weight=1) # LEFT
                 elif grid[y][x] == 5:
-                    G.add_edge(node, (y, x+1)) # RIGHT
-                elif grid[y][x] in [1, 6] :  # Free movement
-                    G.add_edge(node, (y - 1, x))
-                    G.add_edge(node, (y + 1, x))
-                    G.add_edge(node, (y, x - 1))
-                    G.add_edge(node, (y, x + 1))
+                    G.add_edge(node, (y, x+1), weight=1) # RIGHT
+                elif grid[y][x] == 24:
+                    G.add_edge(node, (y-1, x), weight=1)
+                    G.add_edge(node, (y, x-1), weight=1)   # UP, LEFT
+                elif grid[y][x] == 25:
+                    G.add_edge(node, (y-1, x), weight=1)
+                    G.add_edge(node, (y, x+1), weight=1) # UP, RIGHT
+                elif grid[y][x] == 34:
+                    G.add_edge(node, (y + 1, x), weight=1)  # DOWN
+                    G.add_edge(node, (y, x-1), weight=1) # DOWN, LEFT
+                elif grid[y][x] == 35:
+                    G.add_edge(node, (y + 1, x), weight=1)  # DOWN
+                    G.add_edge(node, (y, x+1), weight=1) # DOWN, RIGHT
 
                 for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # Directions: UP, DOWN, LEFT, RIGHT
                     ey, ex = y + dy, x + dx
@@ -281,37 +324,43 @@ def robot_movement_graph(grid):
                         adj_val = grid[ey][ex]
 
                         # Add edges for destination nodes
-                        if grid[y][x] in [2, 3, 4, 5, 6] and adj_val in [7, 8, 9]:
-                            G.add_edge(node, (ey, ex))
+                        if grid[y][x] in [2, 3, 4, 5, 24, 25, 34, 35] and adj_val in [7, 8, 9]:
+                            G.add_edge(node, (ey, ex), weight=100)
+
 
     return G
 ## Path Updates
 
 # To find out the path for robots to travel via dijkstra
 # Assuming where their first task will be pickup.
-global robotpath
-global robot_destination
-global robotstate
-global robotamount
-robotamount = 40
+
+robotamount = 1300
+robotcurloc = [] # current location of the robots
 robotpath = [] # Pathway of Robots to move
 robot_destination = [] # Coordinates of the tasks
 robotstate = {} # Determine if the robot is doing pickup(False) or dropoff(True)
+prevstate = {} # Previous robot state
+token_amount = [0] * robotamount
 
 CHARGING_THRESHOLD = 30  # Battery threshold to go charging
 CHARGE_AMOUNT_PER_FRAME = 5  # Amount of battery charged per frame at the charging station
 battery = [random.randint(10,100) for _ in range(robotamount)]
-print(battery)
 
 def initial_robot_path():
+    global robotpath
+    global robot_destination
+    global robotstate
+    global robotamount
+    global prevstate
     Grid = robot_movement_graph(grid_layout)
     for i in range(robotamount):
         start_point = random.choice(startloc)
+        robotcurloc.append(start_point)
         startloc.remove(start_point)
         if battery[i] < CHARGING_THRESHOLD:
             go_point = random.choice(charging)
             try:
-                path = nx.dijkstra_path(Grid, start_point, go_point)
+                path = nx.dijkstra_path(Grid, start_point, go_point, weight='weight')
                 robotpath.append(path)
 
                 # Update robot_tasks mapping
@@ -324,7 +373,7 @@ def initial_robot_path():
             go_point = random.choice(pickup)
 
             try:
-                path = nx.dijkstra_path(Grid, start_point, go_point)
+                path = nx.dijkstra_path(Grid, start_point, go_point, weight='weight')
                 robotpath.append(path)
 
                 # Update robot_tasks mapping
@@ -334,16 +383,14 @@ def initial_robot_path():
             except nx.NetworkXNoPath:
                 print(f"No starting path found from {start_point} to {go_point}")
 
-
-
-
+initial_robot_path()
 # Update the path
 def robot_path_update(robotid, new_start, new_end):
 
     Grid = robot_movement_graph(grid_layout)
     if new_start in Grid and new_end in Grid:
         try:
-            path = nx.dijkstra_path(Grid, new_start, new_end)
+            path = nx.dijkstra_path(Grid, new_start, new_end, weight='weight')
             robot_destination[robotid] = (new_start, new_end)
             robotpath[robotid] = path
 
@@ -353,23 +400,31 @@ def robot_path_update(robotid, new_start, new_end):
     else:
         print(f"Invalid path update for Robot ID {robotid}: {new_start} to {new_end}")
 
-initial_robot_path()
-print(robotstate)
+
 
 ## Task Allocator
 
 def allocator(robotid, currentpos):
+
     new_start = currentpos
 
-    if battery[robotid] < CHARGING_THRESHOLD and robotstate[robotid] == "Pickup": # Only can go charge after dropoff
+    if battery[robotid] < CHARGING_THRESHOLD and robotstate[robotid] == "Pickup": # Persist to finish job even low battery
+        new_end = random.choice(dropoff)
+        update_robot_state(robotid)
+        robotstate[robotid] = "Dropoff"
+        robot_destination[robotid] = {new_start, new_end}
+        return new_start, new_end
+
+    elif battery[robotid] < CHARGING_THRESHOLD and robotstate[robotid] == "Dropoff": # Only can go charge after dropoff
+        update_throughput(robotid)
+        update_robot_state(robotid)
         new_end = random.choice(charging)
         robotstate[robotid] = "Charging"
         robot_destination[robotid] = {new_start, new_end}
         return new_start, new_end
 
-    elif battery[robotid] < CHARGING_THRESHOLD and robotstate[robotid] == "Dropoff": # Persist to finish job even low battery
-        new_end = random.choice(dropoff)
-        robotstate[robotid] = "Pickup"
+    elif battery[robotid] < 90 and robotstate[robotid] == "Charging": # Continue Pickup
+        new_end = random.choice(pickup)
         robot_destination[robotid] = {new_start, new_end}
         return new_start, new_end
 
@@ -384,23 +439,43 @@ def allocator(robotid, currentpos):
         if currentpos not in charging:
             charging.append(currentpos)
         new_end = random.choice(pickup)
+        update_robot_state(robotid)
         robotstate[robotid] = "Pickup"
         robot_destination[robotid] = {new_start, new_end}
         return new_start, new_end
 
-    else:
-        if robotstate[robotid] != "Charging":
-            if robotstate.get(robotid) == "Pickup":
-                new_end = random.choice(dropoff)
-                robotstate[robotid] = "Dropoff"
-                robot_destination[robotid] = {new_start, new_end}
-                return new_start, new_end
 
-            elif robotstate.get(robotid) == "Dropoff":
-                new_end = random.choice(pickup)
-                robotstate[robotid] = "Pickup"
-                robot_destination[robotid] = {new_start, new_end}
-                return new_start, new_end
+    else:
+        if robotstate.get(robotid) == "Pickup":
+            new_end = random.choice(dropoff)
+            update_robot_state(robotid)
+            robotstate[robotid] = "Dropoff"
+            robot_destination[robotid] = {new_start, new_end}
+            return new_start, new_end
+
+        elif robotstate.get(robotid) == "Dropoff":
+            update_throughput(robotid)
+            new_end = random.choice(pickup)
+            update_robot_state(robotid)
+            robotstate[robotid] = "Pickup"
+            robot_destination[robotid] = {new_start, new_end}
+            return new_start, new_end
+
+        print(robotid, "Not being allocated at the state of", robotstate[robotid], "at", currentpos)
+
+
+def update_robot_state(robotid):
+    # Update the previous state before changing the current state
+    prevstate[robotid] = robotstate.get(robotid, None)
+
+
+throughput = 0
+def update_throughput(robotid):
+
+    global throughput
+    if robotcurloc[robotid] in dropoff:
+        throughput += 1
+        print(f"Robot {robotid} completed a cycle. Total throughput: {throughput}")
 
 
 # Check Collision by taking the current pos
@@ -432,101 +507,231 @@ def collisions(curpos, prevpos):
 
     return collision_nodes
 
-# Token based concept change to : (Need to further solve)
 """
 robot request for token first, success token request store in a list (its coordinate), the path robot can move is according to the stored list,
 request until the path is empty. If already have the grid token, keep (skip the turn)
 if the request list is empty, cannot move, stay at same place
 
 """
-global framecount
-global previous_positions
-previous_positions = [None] * len(robotpath)
-framecount = 0
-def update(framecount):
-    ax.clear()
-    print("Global frame:", framecount)
 
-    currentpos = []
-  # Robots current position
+
+def is_robot_behind(current_robot_id, current_position, robot_directions, robot_positions):
+    """
+    Check if there is a robot directly behind the current robot.
+
+    :param current_robot_id: The ID of the current robot.
+    :param current_position: The current position of the robot as a tuple (x, y).
+    :param robot_directions: A dictionary mapping robot IDs to their current direction.
+    :param robot_positions: A dictionary mapping robot IDs to their current positions.
+    :return: Boolean indicating if there is a robot behind.
+    """
+    # Define the reverse direction vectors
+    reverse_directions = {
+        'up': (0, 1),  # Assuming 'up' is negative y-direction
+        'down': (0, -1),
+        'left': (1, 0),  # Assuming 'left' is negative x-direction
+        'right': (-1, 0),
+        # Add more directions if needed
+    }
+
+    # Get the reverse direction of the current robot
+    if robot_directions[current_robot_id] in reverse_directions:
+        reverse_dx, reverse_dy = reverse_directions[robot_directions[current_robot_id]]
+        # Calculate the position behind the current robot
+        behind_position = (current_position[0] + reverse_dx, current_position[1] + reverse_dy)
+
+        # Check if any robot is at the behind position
+        for robot_id, position in robot_positions.items():
+            if robot_id != current_robot_id and position == behind_position:
+                return True
+
+    return False
+
+
+def get_robot_directions(robot_paths):
+    """
+    Infer the directions of robots based on their paths.
+    :param robot_paths: A list of paths for each robot where each path is a list of (x, y) tuples.
+    :return: A dictionary with robot_ids as keys and direction strings as values.
+    """
+    directions = {}
+    for robot_id, path in enumerate(robot_paths):
+        if len(path) >= 2:
+            # Compare the current position with the next position to determine direction
+            current_pos = path[-2]
+            next_pos = path[-1]
+            dx = next_pos[0] - current_pos[0]
+            dy = next_pos[1] - current_pos[1]
+
+            if dx > 0:
+                directions[robot_id] = 'right'
+            elif dx < 0:
+                directions[robot_id] = 'left'
+            elif dy > 0:
+                directions[robot_id] = 'up'  # Assuming positive y-direction is 'up' in your grid
+            elif dy < 0:
+                directions[robot_id] = 'down'
+            else:
+                directions[robot_id] = 'stationary'  # No movement
+        else:
+            # If there's no next position, the robot is stationary or its direction is unknown
+            directions[robot_id] = 'stationary'
+    return directions
+
+def get_behind_robot_id(current_robotid, current_position):
+    intersection_candidates = []
+    other_candidates = []
 
     for robotid, path in enumerate(robotpath):
+        if robotid != current_robotid and path:  # Ensure not checking the same robot and the path is not empty
+            robot_next_position = path[0]  # Assuming the next position to move to is the first in the list
+            if current_position == robot_next_position:
+                # Determine the value of the robot's current grid cell
+                current_robot_grid_value = grid_layout[robotcurloc[robotid][0]][robotcurloc[robotid][1]]
+                if current_robot_grid_value in [24, 25, 34, 35]:
+                    # This robot is on an intersection grid, prioritize
+                    intersection_candidates.append(robotid)
+                else:
+                    # Not on an intersection, add to other candidates
+                    other_candidates.append(robotid)
 
-        if path:  # Check if the path is not empty
+    # Prioritize robots on intersection grids, if any
+    if intersection_candidates:
+        return intersection_candidates[0]
+    elif other_candidates:
+        return other_candidates[0]
 
-            token_acquired = False
-            positions_to_check = min(4, len(path)) # Reserve at least 4 if the path is more than 4, else the length of the path
+    return None
 
-            # print(robotpath)
 
-            for i in range(positions_to_check):
-                if token_manager.request_token(path[i]):
-                    # If token received for this position, move the robot
-                    for j in range(i + 1):
-                        current_position = path.pop(0)
-                    currentpos.append(current_position)
 
-                    # Release token for the previous position if it exists
-                    if previous_positions[robotid] is not None:
-                        token_manager.release_token(previous_positions[robotid])
+global framecount
+collison_cp = [None] * len(robotpath) #Only for checking collision
+previous_positions = [None] * len(robotpath)
+framecount = 0
+acquiredpos = {robotid: [] for robotid in range(len(robotpath))}
+robotelements = []
+def update(framecount):
 
-                    # Update previous position
-                    previous_positions[robotid] = current_position
-                    token_acquired = True
+    global previous_positions
+    global collison_cp
+    global acquiredpos
+
+    for element in robotelements:
+        element.remove()
+    robotelements.clear()
+
+    print("Global frame:", framecount)
+
+    # Token Reservation
+    for robotid, path in enumerate(robotpath):
+        tokenamount = min(3, len(path))
+
+        for position in path[:tokenamount]:
+            if len(acquiredpos[robotid]) < tokenamount:
+                if token_manager.request_token(robotid, position):
+                    if position not in acquiredpos.get(robotid, []):
+                        acquiredpos[robotid].append(position)
+                        robotpath[robotid].pop(0)
+                else:
                     break
 
-            if not token_acquired:
-                # If no tokens were acquired, stay in the current position
-                if previous_positions[robotid] is not None:
-                    currentpos.append(previous_positions[robotid])
+    # Moving Robots
+    for robotid in range(len(acquiredpos)):
+        if acquiredpos[robotid]:
+            currentloc = robotcurloc[robotid]
+            previous_positions[robotid] = currentloc
 
-                previous_positions[robotid] = previous_positions[robotid]
+            nextpos = acquiredpos[robotid].pop(0)
+            robotcurloc[robotid] = nextpos
 
-        elif robotstate[robotid] == "Charging":
-            current_position = robot_destination[robotid][1]  # Assuming this is the charging position
-            if current_position in charging and battery[robotid] < 90:
+            behindrobotid = get_behind_robot_id(robotid, currentloc)
+            if behindrobotid is not None:
+                token_manager.pass_token(robotid, behindrobotid, currentloc)
+                if currentloc not in acquiredpos.get(behindrobotid, []):
+                    acquiredpos[behindrobotid].append(currentloc)
+                    robotpath[behindrobotid].pop(0)
+            else:
+                 token_manager.release_token(robotid, currentloc)
+        else:
+            currentloc = robotcurloc[robotid]
+            previous_positions[robotid] = currentloc
+            robotcurloc[robotid] = currentloc
+
+            behindrobotid = get_behind_robot_id(robotid, currentloc)
+            if behindrobotid is not None:
+                token_manager.pass_token(robotid, behindrobotid, currentloc)
+                if currentloc not in acquiredpos.get(behindrobotid, []):
+                    acquiredpos[behindrobotid].append(currentloc)
+                    robotpath[behindrobotid].pop(0)
+
+
+
+    # print(acquiredpos)
+    # print(robotcurloc)
+    # print(robotpath)
+
+
+    for robotid, _ in enumerate(robotcurloc):
+        if robotstate[robotid] == "Charging" and robotcurloc[robotid] in charging:
+            if battery[robotid] < 90:
                 battery[robotid] += CHARGE_AMOUNT_PER_FRAME
-            elif current_position in charging and battery[robotid] >= 90:
+            elif battery[robotid] >= 90:
                 # Handle robot finishing charging
-                new_start, new_end = allocator(robotid, current_position)
+                new_start, new_end = allocator(robotid, robotcurloc[robotid])
                 robot_path_update(robotid, new_start, new_end)
                 battery[robotid] -= random.randint(1, 3)
-                print(f"New task assigned to Robot ID {robotid}: {new_start} to {new_end}")
-            else:
-                break
+                # print(f"New task assigned to Robot ID {robotid}: {new_start} to {new_end}")
 
-            currentpos.append(current_position)
-        else:
-            new_start, new_end = allocator(robotid, robot_destination[robotid][1])
+        elif robotcurloc[robotid] == robot_destination[robotid][1]:
+            new_start, new_end = allocator(robotid, robotcurloc[robotid])
             robot_path_update(robotid, new_start, new_end)
-            battery[robotid] -= random.randint(1,3)
-            currentpos.append(new_start)  # Add the start of the new path to current position
-            print(f"New task assigned to Robot ID {robotid}: {new_start} to {new_end}")
-
-            if previous_positions[robotid] is not None:
-                token_manager.release_token(previous_positions[robotid])
-
-    for i, pos in enumerate(currentpos):
-        if previous_positions[i] is None:
-            previous_positions[i] = pos
-        else:
-            previous_positions[i] = pos
-
+            battery[robotid] -= random.randint(1, 3)
+            robotcurloc[robotid] = new_start  # Add the start of the new path to current position
+            # print(f"New task assigned to Robot ID {robotid}: {new_start} to {new_end}")
 
     # Check for collisions
-    collisions(currentpos, previous_positions)
+    collisions(collison_cp, previous_positions)
 
-    graph(currentpos)
-    ax.set_aspect('equal')
 
-print(robot_destination)
+    for robot_id, new_position in enumerate(robotcurloc):
+        x, y = new_position  # Convert as needed
+        robot_artists[robot_id].set_center((y, -x))  # Update the artist position directly
+
+    if framecount == 5000:
+        print(f"Stopping at frame {framecount}. Total Throughput: {throughput}")
+        animation.event_source.stop()
+        yes = input("Continue?(p): ")
+        if yes == 'p':
+            animation.event_source.start()
+
+    return list(robot_artists.values())  # Return artists as a sequence for the animation framework
+
+is_paused = False
+
+def toggle_pause(event):
+    global is_paused
+    if event.key == 'p':  # Choose an appropriate key for pausing/resuming
+        if is_paused:
+            animation.event_source.start()  # Resume animation
+        else:
+            animation.event_source.stop()  # Pause animation
+        is_paused = not is_paused
+
 maxpath = max(len(path) for path in robotpath)
-animation = FuncAnimation(fig, update, frames=9999, interval=300)
+fig, ax = draw_static_layout()
+initialize_robots(robotcurloc)
+animation = FuncAnimation(fig, update, frames=9999, interval=1000, blit=True)
+fig.canvas.mpl_connect('key_press_event', toggle_pause)
 plt.show()
 
+# Stop the profiler
+profiler.disable()
 
+# Create a Stats object from the profiler and sort the results by cumulative time
+stats = pstats.Stats(profiler).sort_stats('cumulative')
 
-# Task Distribution
-
-
-
+# Dump the stats to a file
+with open('profiler_stats.txt', 'w') as file:
+    stats.stream = file
+    stats.print_stats()
